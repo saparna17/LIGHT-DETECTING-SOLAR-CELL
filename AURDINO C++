@@ -1,0 +1,94 @@
+#include <Servo.h>
+
+// Servo objects
+Servo servoZ;  // Left-Right (Z axis)
+Servo servoY;  // Top-Bottom (Y axis)
+
+// LDR pins
+int topLDR = A0;
+int bottomLDR = A1;
+int rightLDR = A2;
+int leftLDR = A3;
+
+// Servo positions
+int posZ = 90;
+int posY = 90;
+
+// Threshold (adjust for sensitivity)
+int threshold = 100;
+
+// -------- LDR Averaging --------
+int readAverage(int pin) {
+  int sum = 0;
+  for (int i = 0; i < 5; i++) {
+    sum += analogRead(pin);
+    delay(2);
+  }
+  return sum / 5;
+}
+
+void setup() {
+  servoZ.attach(2);
+  servoY.attach(3);
+
+  servoZ.write(posZ);
+  servoY.write(posY);
+
+  Serial.begin(9600);
+}
+
+void loop() {
+
+  // -------- READ LDR VALUES --------
+  int top = readAverage(topLDR);
+  int bottom = readAverage(bottomLDR);
+  int right = readAverage(rightLDR);
+  int left = readAverage(leftLDR);
+
+  int diffY = top - bottom;
+  int diffZ = left - right;
+
+  // -------- Y AXIS CONTROL --------
+  int stepY = 0;
+
+  if (abs(diffY) > threshold && abs(diffY) <= 200) stepY = 1;
+  else if (abs(diffY) > 200 && abs(diffY) <= 400) stepY = 3;
+  else if (abs(diffY) > 400) stepY = 5;
+
+  if (diffY > threshold) posY += stepY;
+  else if (diffY < -threshold) posY -= stepY;
+
+  posY = constrain(posY, 0, 180);
+  servoY.write(posY);
+
+  // -------- Z AXIS CONTROL --------
+  int stepZ = 0;
+
+  if (abs(diffZ) > threshold && abs(diffZ) <= 200) stepZ = 1;
+  else if (abs(diffZ) > 200 && abs(diffZ) <= 400) stepZ = 3;
+  else if (abs(diffZ) > 400) stepZ = 5;
+
+  if (diffZ > threshold) posZ += stepZ;
+  else if (diffZ < -threshold) posZ -= stepZ;
+
+  posZ = constrain(posZ, 0, 180);
+  servoZ.write(posZ);
+
+  // -------- SERIAL MONITOR --------
+  Serial.println("------ LDR DATA ------");
+
+  Serial.print("Top: "); Serial.print(top);
+  Serial.print(" | Bottom: "); Serial.print(bottom);
+  Serial.print(" | DiffY: "); Serial.println(diffY);
+
+  Serial.print("Left: "); Serial.print(left);
+  Serial.print(" | Right: "); Serial.print(right);
+  Serial.print(" | DiffZ: "); Serial.println(diffZ);
+
+  Serial.print("Servo Y: "); Serial.print(posY);
+  Serial.print(" | Servo Z: "); Serial.println(posZ);
+
+  Serial.println("----------------------\n");
+
+  delay(150);
+}
